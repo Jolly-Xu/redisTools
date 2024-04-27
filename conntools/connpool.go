@@ -1,7 +1,8 @@
-package conn
+package conntools
 
 import (
 	"redisTools/redis"
+	"strconv"
 	"sync"
 )
 
@@ -33,7 +34,14 @@ func (p *ConnPool) SetMaxIdleConns(maxIdleConns int) {
 	p.maxIdleConns = maxIdleConns
 }
 
-func NewConnPool(config redis.Config, factory func() *RedisConn, initialOpenConns, maxOpenConns, maxIdleConns int) *ConnPool {
+// DefaultFactory 默认创建连接工厂
+func DefaultFactory(config *redis.Config) *RedisConn {
+	dst := config.IpAddr + ":" + strconv.Itoa(config.Port)
+	conn := NewRedisConn(config.NetType, dst)
+	return conn
+}
+
+func NewConnPool(config *redis.Config, factory func() *RedisConn, initialOpenConns, maxOpenConns, maxIdleConns int) *ConnPool {
 	// 创建一个连接池
 	pool := &ConnPool{
 		pool:         make(chan *RedisConn, maxOpenConns),
@@ -41,10 +49,16 @@ func NewConnPool(config redis.Config, factory func() *RedisConn, initialOpenConn
 		maxIdleConns: maxIdleConns,
 		factory:      factory,
 	}
+	df := factory == nil
 	// 初始化若干个连接对象
 	for i := 0; i < initialOpenConns; {
 		// 使用工厂方法对连接进行创建，如果没有传入，使用默认实现的工厂对象
-		conn := factory()
+		var conn *RedisConn
+		if df {
+			conn = DefaultFactory(config)
+		} else {
+			//TODO 执行自定义的连接创建工厂
+		}
 		// 直到创建完成initialOpenConns个连接对象才停止循环
 		if conn.Auth(config.Password) {
 			pool.Put(conn)

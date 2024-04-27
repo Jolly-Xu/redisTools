@@ -1,6 +1,8 @@
 package redis
 
-import "time"
+import (
+	"time"
+)
 
 type Config struct {
 	// redis连接地址
@@ -31,4 +33,14 @@ type Config struct {
 	MaxIdleConn int
 	// 最大活动连接数量
 	MaxActiveConn int
+}
+
+func FastConfig(addr string, port int, password string) *Config {
+	return &Config{
+		IpAddr:   addr,
+		Port:     port,
+		Password: password,
+		NetType:  "Tcp",
+		DataBase: 16,
+	}
 }
