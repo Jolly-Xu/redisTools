@@ -40,7 +40,7 @@ func FastConfig(addr string, port int, password string) *Config {
 		IpAddr:   addr,
 		Port:     port,
 		Password: password,
-		NetType:  "Tcp",
+		NetType:  "tcp",
 		DataBase: 16,
 	}
 }

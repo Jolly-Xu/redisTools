@@ -1,9 +1,10 @@
-package conntools
+package redis
 
 import (
 	"bufio"
 	"fmt"
 	"net"
+	"strings"
 )
 
 // 字符串常量
@@ -21,14 +22,14 @@ type RedisConn struct {
 func NewRedisConn(netType string, addr string) *RedisConn {
 	conn, err := net.Dial(netType, addr)
 	if err != nil {
-		fmt.Println("创建连接失败")
+		fmt.Println("创建连接失败", err)
 		return nil
 	}
 	return &RedisConn{conn: conn}
 }
 
 func (r *RedisConn) Auth(password string) bool {
-	authCommand := AUTH + password + END
+	authCommand := AUTH + " " + password + END
 	_, err := r.conn.Write([]byte(authCommand))
 	if err != nil {
 		fmt.Println("Redis权限认证错误:", err)
@@ -58,14 +59,42 @@ func (r *RedisConn) CommandNoResult(cmd string) (success bool) {
 }
 
 func (r *RedisConn) CommandGetResult(cmd string) (result []byte, success bool) {
-	if r.CommandNoResult(cmd) {
-		reader := bufio.NewReader(r.conn)
-		read, err := reader.ReadBytes('\n')
-		if err != nil {
-			fmt.Println("")
-			return nil, false
-		}
-		return read, true
+	_, err := r.conn.Write([]byte(cmd))
+	success = true
+	if err != nil {
+		fmt.Println("执行命令失败", err)
+		success = false
+		return
 	}
-	return nil, false
+	if success {
+		reader := bufio.NewReader(r.conn)
+		respLenBytes, err := reader.ReadBytes('\n')
+		if err != nil {
+			fmt.Println("无法读取响应长度:", err)
+			return
+		}
+
+		// 解析响应长度
+		respLenStr := strings.TrimPrefix(string(respLenBytes), "$")
+		respLen := 0
+		fmt.Sscanf(respLenStr, "%d", &respLen)
+
+		// 读取响应内容
+		for i := 0; i < respLen; i++ {
+			responseByte, err := reader.ReadByte()
+			if err != nil {
+				fmt.Println("无法读取响应内容:", err)
+				return
+			}
+			result = append(result, responseByte)
+		}
+
+		// 读取响应结束符
+		_, err = reader.ReadBytes('\n')
+		if err != nil {
+			fmt.Println("无法读取响应结束符:", err)
+			return
+		}
+	}
+	return
 }

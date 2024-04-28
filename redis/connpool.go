@@ -1,7 +1,6 @@
-package conntools
+package redis
 
 import (
-	"redisTools/redis"
 	"strconv"
 	"sync"
 )
@@ -35,13 +34,13 @@ func (p *ConnPool) SetMaxIdleConns(maxIdleConns int) {
 }
 
 // DefaultFactory 默认创建连接工厂
-func DefaultFactory(config *redis.Config) *RedisConn {
+func DefaultFactory(config *Config) *RedisConn {
 	dst := config.IpAddr + ":" + strconv.Itoa(config.Port)
 	conn := NewRedisConn(config.NetType, dst)
 	return conn
 }
 
-func NewConnPool(config *redis.Config, factory func() *RedisConn, initialOpenConns, maxOpenConns, maxIdleConns int) *ConnPool {
+func NewConnPool(config *Config, factory func() *RedisConn, initialOpenConns, maxOpenConns, maxIdleConns int) *ConnPool {
 	// 创建一个连接池
 	pool := &ConnPool{
 		pool:         make(chan *RedisConn, maxOpenConns),

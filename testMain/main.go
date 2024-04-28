@@ -1,5 +1,9 @@
 package main
 
+import "redisTools/redis"
+
 func main() {
-	//redis.CreateRedis(redis.FastConfig())
+	r := redis.CreateRedis(redis.FastConfig("10.32.15.225", 6379, "xujialin"))
+	print(r.GetToString("mykey"))
+
 }
