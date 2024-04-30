@@ -47,7 +47,6 @@ func (r *Redis) Set(cmd *RedisCommand) (success bool) {
 	r.doPreInterceptor(context)
 	if conn.CommandNoResult(cmd.Cmd()) {
 		success = true
-		cmd.SetRes(true)
 	}
 	// 执行后置拦截链
 	r.doPostInterceptor(context)

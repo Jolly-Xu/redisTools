@@ -1,10 +1,5 @@
 package redis
 
-import (
-	"fmt"
-	"reflect"
-)
-
 type redisCli struct {
 	redis Redis
 }
@@ -47,23 +42,13 @@ func (r *redisCli) GetByte(key string) (res []byte) {
 }
 
 func (r *redisCli) Set(key string, value interface{}) (success bool) {
-	// 先实现结构体和字符串
-	//TODO 后续需要继续实现其他类型
-	var cmd string
-	switch v := value.(type) {
-	case string:
-		cmd = key + " " + v
-	case []byte: // 示例中的其他类型，可以添加更多
-		fmt.Printf("value is a byte slice: %s\n", string(v))
-	default:
-		// 检查是否为结构体类型
-		val := reflect.ValueOf(v)
-		if val.Kind() == reflect.Struct || val.Kind() == reflect.Pointer {
-			fmt.Println("警告！存储的是结构体或者指针信息，这样的存储是没有意义的，请先进行序列化！")
-			return
-		}
-	}
+	cmd := key + " " + convertInterfaceToString(value)
 	command := newSetCommand(cmd, -1)
+	command.AddArgs(value)
 	success = r.redis.Set(command)
 	return
+}
+
+func (r *redisCli) AddPostInterceptor(interceptor func(redisContext *InterceptorContext)) {
+	r.redis.postInterceptors = append(r.redis.postInterceptors, interceptor)
 }

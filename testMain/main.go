@@ -1,6 +1,10 @@
 package main
 
-import "redisTools/redis"
+import (
+	"encoding/hex"
+	"github.com/vmihailenco/msgpack/v5"
+	"redisTools/redis"
+)
 
 type userinfo struct {
 	Username string
@@ -9,11 +13,34 @@ type userinfo struct {
 
 func test(redisContext *redis.InterceptorContext) {
 	println("后置处理器开始")
+	//args := redisContext.Cmd().Args()
+	//i := args[0]
+	res := redisContext.Cmd().Res()
+	u := userinfo{}
+	s := string(res)
+	decodeString, err := hex.DecodeString(s)
+	if err != nil {
+		return
+	}
+	err = msgpack.Unmarshal(decodeString, &u)
+	if err != nil {
+		return
+	}
 
 }
 
 func main() {
 	cli := redis.CreateRedisCli(redis.FastConfig("10.32.2.37", 6379, "xujialin"))
 	//println(cli.Get("test"))
-	cli.Set("xujialin", "jolly")
+	//ip := net.ParseIP("192.168.1.1")
+	//cli.Set("ip2", ip)
+	//u := userinfo{Username: "xujialin", Password: "123456"}
+	//marshal, err := msgpack.Marshal(u)
+	//if err != nil {
+	//	return
+	//}
+	//cli.Set("userinfo", marshal)
+	cli.AddPostInterceptor(test)
+	println(cli.Get("userinfo"))
+
 }
