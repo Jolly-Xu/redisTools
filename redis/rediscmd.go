@@ -1,57 +1,85 @@
 package redis
 
 import (
-	"context"
 	"time"
 )
 
-//const (
-//	get = iota
-//	set
-//	setex
-//	sel
-//	ping
-//	del
-//	flushdb
-//	flushall
-//	keys
-//	expire
-//)
+const (
+	get = iota
+	set
+	setex
+	sel
+	ping
+	del
+	flushdb
+	flushall
+	keys
+	expire
+)
+
+const (
+	Get = "GET "
+	End = "\n"
+	Set = "SET "
+)
 
 // RedisCommand 表示一个Redis命令
 type RedisCommand struct {
 	// 命令名
-	Name string
-	// 命令参数
-	Args []interface{}
-	// 预期的回复类型
-	ResponseType string
+	cmd string
+
 	// 超时时间
-	Timeout time.Duration
-	// 上下文信息
-	Ctx context.Context
-	// 错误信息
-	Err error
+	timeout time.Duration
+
+	// 返回结果
+	res interface{}
+
+	// 命令种类
+	cmdType int
 }
 
-// NewRedisCommand 创建一个新的Redis命令实例
-func NewRedisCommand(name string, args []interface{}, responseType string, timeout time.Duration) *RedisCommand {
-	return &RedisCommand{
-		Name:         name,
-		Args:         args,
-		ResponseType: responseType,
-		Timeout:      timeout,
-		Ctx:          context.Background(), // 默认情况下使用Background作为上下文
-	}
+func newRedisCommand(cmd string, timeout time.Duration, res interface{}, cmdType int) *RedisCommand {
+	return &RedisCommand{cmd: cmd, timeout: timeout, res: res, cmdType: cmdType}
 }
 
-// WithContext 为Redis命令设置上下文
-func (cmd *RedisCommand) WithContext(ctx context.Context) *RedisCommand {
-	cmd.Ctx = ctx
-	return cmd
+func newGetCommand(cmd string, timeout time.Duration) *RedisCommand {
+	cmd = Get + cmd + End
+	return newRedisCommand(cmd, timeout, nil, get)
 }
 
-// SetError 为Redis命令设置错误信息
-func (cmd *RedisCommand) SetError(err error) {
-	cmd.Err = err
+func newSetCommand(cmd string, timeout time.Duration) *RedisCommand {
+	cmd = Set + cmd + End
+	return newRedisCommand(cmd, timeout, nil, set)
+}
+
+func (r *RedisCommand) CmdType() int {
+	return r.cmdType
+}
+
+func (r *RedisCommand) SetCmdType(cmdType int) {
+	r.cmdType = cmdType
+}
+
+func (r *RedisCommand) Cmd() string {
+	return r.cmd
+}
+
+func (r *RedisCommand) SetCmd(cmd string) {
+	r.cmd = cmd
+}
+
+func (r *RedisCommand) Timeout() time.Duration {
+	return r.timeout
+}
+
+func (r *RedisCommand) SetTimeout(timeout time.Duration) {
+	r.timeout = timeout
+}
+
+func (r *RedisCommand) Res() interface{} {
+	return r.res
+}
+
+func (r *RedisCommand) SetRes(res interface{}) {
+	r.res = res
 }

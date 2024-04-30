@@ -2,13 +2,9 @@ package redis
 
 import "time"
 
-// redis客户端主要代码
-
-const (
-	Get = "GET "
-	End = "\n"
-	Set = "SET "
-)
+/**
+redis 中间层主要代码，负责在redisClient 和 connect 中起到承上启下的作用
+*/
 
 type Redis struct {
 	//  配置类
@@ -16,43 +12,49 @@ type Redis struct {
 	// 连接池
 	connPool *ConnPool
 	// 前置拦截器，查询前拦截器
-	preInterceptors []func(args ...interface{})
+	preInterceptors []func(redisContext *InterceptorContext)
 	// 后置拦截器，查询后的拦截器
-	postInterceptors []func(args ...interface{})
+	postInterceptors []func(redisContext *InterceptorContext)
 }
 
-func CreateRedis(config *Config) (r *Redis) {
-	//TODO 进行一些初始化操作
-	r = &Redis{
-		Config: config,
-	}
-	pool := NewConnPool(config, nil, 5, 10, 8)
-	r.connPool = pool
-	return
-}
-
-func (r *Redis) GetToString(key string) (res string) {
+func (r *Redis) GetByteArr(cmd *RedisCommand) (res []byte) {
 	// 获取连接对象
-	r.doPreInterceptor()
 	conn := r.connPool.Get()
-	result, success := conn.CommandGetResult(Get + key + End)
+	// 构建一个命令对象
+	context := newInterceptorContext(conn, cmd)
+	// 执行前置拦截器链
+	r.doPreInterceptor(context)
+	result, success := conn.CommandGetResult(cmd.Cmd())
 	if success {
-		res = string(result)
+		res = result
+		cmd.SetRes(res)
 	}
+	// 执行后置拦截链
+	r.doPostInterceptor(context)
 	// 归还连接对象
-	r.doPostInterceptor()
 	r.connPool.Put(conn)
+	// 置空，方便垃圾回收
+	context = nil
 	return
 }
 
 // Set 默认set方法，未携带过期时间
-func (r *Redis) Set(key string, value interface{}) (success bool) {
+func (r *Redis) Set(cmd *RedisCommand) (success bool) {
 	conn := r.connPool.Get()
-	// TODO 需要进行健壮性升级，结构体的类型的处理还是个问题，到底要怎么去存，是提前直接给他序列化了，还是等待用户自己序列化
-	cmd := Set + key + " " + value.(string) + END
-	if conn.CommandNoResult(cmd) {
+	// 构建一个命令对象
+	context := newInterceptorContext(conn, cmd)
+	// 执行前置拦截器链
+	r.doPreInterceptor(context)
+	if conn.CommandNoResult(cmd.Cmd()) {
 		success = true
+		cmd.SetRes(true)
 	}
+	// 执行后置拦截链
+	r.doPostInterceptor(context)
+	// 归还连接对象
+	r.connPool.Put(conn)
+	// 置空，方便垃圾回收
+	context = nil
 	return
 }
 
@@ -62,23 +64,23 @@ func (r *Redis) SetWithExp(key string, value interface{}, expireTime time.Durati
 }
 
 // AddPreInterceptor 添加前置拦截器
-func (r *Redis) AddPreInterceptor(interceptor func(args ...interface{})) {
+func (r *Redis) AddPreInterceptor(interceptor func(redisContext *InterceptorContext)) {
 	r.preInterceptors = append(r.preInterceptors, interceptor)
 }
 
 // AddPostInterceptor 添加后置拦截器
-func (r *Redis) AddPostInterceptor(interceptor func(args ...interface{})) {
+func (r *Redis) AddPostInterceptor(interceptor func(redisContext *InterceptorContext)) {
 	r.postInterceptors = append(r.postInterceptors, interceptor)
 }
 
-func (r *Redis) doPreInterceptor() {
+func (r *Redis) doPreInterceptor(redisContext *InterceptorContext) {
 	for _, interceptor := range r.preInterceptors {
-		interceptor()
+		interceptor(redisContext)
 	}
 }
 
-func (r *Redis) doPostInterceptor() {
+func (r *Redis) doPostInterceptor(redisContext *InterceptorContext) {
 	for _, interceptor := range r.postInterceptors {
-		interceptor()
+		interceptor(redisContext)
 	}
 }

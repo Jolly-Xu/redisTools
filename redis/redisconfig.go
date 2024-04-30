@@ -33,6 +33,8 @@ type Config struct {
 	MaxIdleConn int
 	// 最大活动连接数量
 	MaxActiveConn int
+	// 是否开启Debug模式，开启日志打印,默认为false
+	Debug bool
 }
 
 func FastConfig(addr string, port int, password string) *Config {
@@ -42,5 +44,6 @@ func FastConfig(addr string, port int, password string) *Config {
 		Password: password,
 		NetType:  "tcp",
 		DataBase: 16,
+		Debug:    true,
 	}
 }
