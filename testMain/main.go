@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/hex"
+	"fmt"
 	"github.com/vmihailenco/msgpack/v5"
 	"redisTools/redis"
 )
@@ -29,18 +30,20 @@ func test(redisContext *redis.InterceptorContext) {
 
 }
 
+func getWithStruct(vt interface{}, arr []byte) {
+	err := msgpack.Unmarshal(arr, vt)
+	if err != nil {
+		fmt.Println("不能将[]byte转为", vt)
+	}
+	return
+}
+
 func main() {
-	cli := redis.CreateRedisCli(redis.FastConfig("10.32.2.37", 6379, "xujialin"))
+	//cli := redis.CreateRedisCli(redis.FastConfig("10.32.2.37", 6379, "xujialin"))
 	//println(cli.Get("test"))
 	//ip := net.ParseIP("192.168.1.1")
 	//cli.Set("ip2", ip)
-	//u := userinfo{Username: "xujialin", Password: "123456"}
-	//marshal, err := msgpack.Marshal(u)
-	//if err != nil {
-	//	return
-	//}
 	//cli.Set("userinfo", marshal)
-	cli.AddPostInterceptor(test)
-	println(cli.Get("userinfo"))
-
+	//cli.AddPostInterceptor(test)
+	//println(cli.Get("userinfo"))
 }

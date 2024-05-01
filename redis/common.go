@@ -2,13 +2,14 @@ package redis
 
 import (
 	"encoding"
-	"encoding/hex"
 	"fmt"
 	"net"
 	"strconv"
 	"strings"
 	"time"
 )
+
+const separator = "\\"
 
 func PrintDebug(redisContext *InterceptorContext) {
 	// 设置颜色
@@ -52,6 +53,30 @@ func PrintDebug2(redisContext *InterceptorContext) {
 	fmt.Printf("%sResponse: %s%s\n", colorCyan, res, colorReset)
 }
 
+func ByteToString(arr []byte) string {
+	var builder strings.Builder
+
+	for i, v := range arr {
+		if i > 0 {
+			builder.WriteString(separator)
+		}
+		builder.WriteString(strconv.Itoa(int(v)))
+	}
+
+	return builder.String()
+}
+
+func StringToByte(s string) []byte {
+	parts := strings.Split(s, separator)
+	arr := make([]byte, len(parts))
+
+	for i, part := range parts {
+		num, _ := strconv.Atoi(part)
+		arr[i] = byte(num)
+	}
+	return arr
+}
+
 func convertInterfaceToString(v interface{}) string {
 	switch v := v.(type) {
 	case nil:
@@ -61,7 +86,7 @@ func convertInterfaceToString(v interface{}) string {
 	case *string:
 		return *v
 	case []byte:
-		return hex.EncodeToString(v)
+		return ByteToString(v)
 	case int:
 		return strconv.FormatInt(int64(v), 10)
 	case *int:
@@ -130,9 +155,9 @@ func convertInterfaceToString(v interface{}) string {
 			fmt.Println("can't marshal %T to string or byte string", v)
 			return ""
 		}
-		return hex.EncodeToString(binary)
+		return ByteToString(binary)
 	case net.IP:
-		return hex.EncodeToString(v)
+		return ByteToString(v)
 	default:
 		fmt.Println("redis: can't marshal %T (implement encoding.BinaryMarshaler)", v)
 		return ""

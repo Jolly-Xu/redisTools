@@ -1,5 +1,10 @@
 package redis
 
+import (
+	"fmt"
+	"github.com/vmihailenco/msgpack/v5"
+)
+
 type redisCli struct {
 	redis Redis
 }
@@ -46,6 +51,29 @@ func (r *redisCli) Set(key string, value interface{}) (success bool) {
 	command := newSetCommand(cmd, -1)
 	command.AddArgs(value)
 	success = r.redis.Set(command)
+	return
+}
+
+func (r *redisCli) SetWithStruct(key string, value interface{}) (success bool) {
+	v, err := msgpack.Marshal(value)
+	if err != nil {
+		fmt.Printf("不能将[]byte转为%T\n", v)
+		fmt.Println(err)
+		return
+	}
+	cmd := key + " " + convertInterfaceToString(v)
+	command := newSetCommand(cmd, -1)
+	command.AddArgs(value)
+	success = r.redis.Set(command)
+	return
+}
+
+func (r *redisCli) GetWithStruct(key string, vt interface{}) {
+	arr := r.GetByte(key)
+	err := msgpack.Unmarshal(arr, vt)
+	if err != nil {
+		fmt.Printf("不能将[]byte转为%T\n", vt)
+	}
 	return
 }
 
