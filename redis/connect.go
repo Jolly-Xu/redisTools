@@ -10,7 +10,7 @@ import (
 // 字符串常量
 const (
 	AUTH = "auth"
-	END  = "\n"
+	END  = "\r\n"
 )
 
 type RedisConn struct {
@@ -77,8 +77,10 @@ func (r *RedisConn) CommandGetResult(cmd string) (result []byte, success bool) {
 		// 解析响应长度
 		respLenStr := strings.TrimPrefix(string(respLenBytes), "$")
 		respLen := 0
-		fmt.Sscanf(respLenStr, "%d", &respLen)
-
+		_, err = fmt.Sscanf(respLenStr, "%d", &respLen)
+		if err != nil {
+			return nil, false
+		}
 		// 读取响应内容
 		for i := 0; i < respLen; i++ {
 			responseByte, err := reader.ReadByte()
@@ -97,4 +99,44 @@ func (r *RedisConn) CommandGetResult(cmd string) (result []byte, success bool) {
 		}
 	}
 	return
+}
+
+func (r *RedisConn) SendCommand(command string, args ...interface{}) (interface{}, error) {
+	commandStr := command
+	for _, arg := range args {
+		commandStr += fmt.Sprintf(" %v", arg)
+	}
+	commandStr += End
+
+	_, err := r.conn.Write([]byte(commandStr))
+	if err != nil {
+		return nil, err
+	}
+
+	reader := bufio.NewReader(r.conn)
+	response, err := reader.ReadString('\n')
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+// BeginTransaction 开启事务
+func (r *RedisConn) BeginTransaction() error {
+	_, err := r.SendCommand("MULTI")
+	return err
+}
+
+// EndTransaction 结束事务
+func (r *RedisConn) EndTransaction() error {
+	_, err := r.SendCommand("EXEC")
+	return err
+}
+
+// Rollback 添加一个 Rollback 方法来执行回滚操作
+func (r *RedisConn) Rollback() error {
+	_, err := r.SendCommand("DISCARD") // 发送 DISCARD 命令来取消事务
+	return err
+
 }
