@@ -7,25 +7,20 @@ import (
 	"strings"
 )
 
-// 字符串常量
-const (
-	AUTH = "auth"
-	END  = "\r\n"
-)
-
 type RedisConn struct {
-	// TODO 先做一个简答的包装，后续如果需要再添加，这样可以把这个结构体注入到连接池里面
+	// 连接对象
 	conn net.Conn
+	//是否开启事务
 }
 
 // NewRedisConn 创建一个新的连接，使用Golang的net包
-func NewRedisConn(netType string, addr string) *RedisConn {
+func NewRedisConn(netType string, addr string) (*RedisConn, error) {
 	conn, err := net.Dial(netType, addr)
 	if err != nil {
-		fmt.Println("创建连接失败", err)
-		return nil
+		fmt.Println(err)
+		return nil, err
 	}
-	return &RedisConn{conn: conn}
+	return &RedisConn{conn: conn}, err
 }
 
 func (r *RedisConn) Auth(password string) bool {
@@ -101,42 +96,21 @@ func (r *RedisConn) CommandGetResult(cmd string) (result []byte, success bool) {
 	return
 }
 
-func (r *RedisConn) SendCommand(command string, args ...interface{}) (interface{}, error) {
-	commandStr := command
-	for _, arg := range args {
-		commandStr += fmt.Sprintf(" %v", arg)
-	}
-	commandStr += End
-
-	_, err := r.conn.Write([]byte(commandStr))
-	if err != nil {
-		return nil, err
-	}
-
-	reader := bufio.NewReader(r.conn)
-	response, err := reader.ReadString('\n')
-	if err != nil {
-		return nil, err
-	}
-
-	return response, nil
-}
-
 // BeginTransaction 开启事务
-func (r *RedisConn) BeginTransaction() error {
-	_, err := r.SendCommand("MULTI")
-	return err
+func (r *RedisConn) BeginTransaction() bool {
+	_, f := r.CommandGetResult("MULTI" + END)
+	return f
 }
 
 // EndTransaction 结束事务
-func (r *RedisConn) EndTransaction() error {
-	_, err := r.SendCommand("EXEC")
-	return err
+func (r *RedisConn) EndTransaction() bool {
+	_, f := r.CommandGetResult("EXEC" + END)
+	return f
 }
 
 // Rollback 添加一个 Rollback 方法来执行回滚操作
-func (r *RedisConn) Rollback() error {
-	_, err := r.SendCommand("DISCARD") // 发送 DISCARD 命令来取消事务
-	return err
+func (r *RedisConn) Rollback() bool {
+	_, f := r.CommandGetResult("DISCARD" + END) // 发送 DISCARD 命令来取消事务
+	return f
 
 }

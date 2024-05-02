@@ -18,9 +18,13 @@ const (
 )
 
 const (
-	Get = "GET "
-	End = "\r\n"
-	Set = "SET "
+	Get     = "GET "
+	END     = "\r\n"
+	Set     = "SET "
+	Multl   = "MULTI"
+	Exec    = "EXEC"
+	Discard = "DISCARD"
+	AUTH    = "auth"
 )
 
 // RedisCommand 表示一个Redis命令
@@ -39,6 +43,9 @@ type RedisCommand struct {
 
 	// 命令种类
 	cmdType int
+
+	// 附加参数
+
 }
 
 func (r *RedisCommand) Res() []byte {
@@ -55,20 +62,6 @@ func (r *RedisCommand) Args() []interface{} {
 
 func (r *RedisCommand) SetArgs(args []interface{}) {
 	r.args = args
-}
-
-func newRedisCommand(cmd string, timeout time.Duration, res []byte, cmdType int) *RedisCommand {
-	return &RedisCommand{cmd: cmd, timeout: timeout, res: res, cmdType: cmdType}
-}
-
-func newGetCommand(cmd string, timeout time.Duration) *RedisCommand {
-	cmd = Get + cmd + End
-	return newRedisCommand(cmd, timeout, nil, get)
-}
-
-func newSetCommand(cmd string, timeout time.Duration) *RedisCommand {
-	cmd = Set + cmd + End
-	return newRedisCommand(cmd, timeout, nil, set)
 }
 
 func (r *RedisCommand) CmdType() int {
@@ -97,4 +90,18 @@ func (r *RedisCommand) Timeout() time.Duration {
 
 func (r *RedisCommand) SetTimeout(timeout time.Duration) {
 	r.timeout = timeout
+}
+
+func newRedisCommand(cmd string, timeout time.Duration, res []byte, cmdType int) *RedisCommand {
+	return &RedisCommand{cmd: cmd, timeout: timeout, res: res, cmdType: cmdType}
+}
+
+func newGetCommand(cmd string, timeout time.Duration) *RedisCommand {
+	cmd = Get + cmd + END
+	return newRedisCommand(cmd, timeout, nil, get)
+}
+
+func newSetCommand(cmd string, timeout time.Duration) *RedisCommand {
+	cmd = Set + cmd + END
+	return newRedisCommand(cmd, timeout, nil, set)
 }

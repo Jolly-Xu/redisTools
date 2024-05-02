@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"fmt"
 	"strconv"
 	"sync"
 )
@@ -36,7 +37,10 @@ func (p *ConnPool) SetMaxIdleConns(maxIdleConns int) {
 // DefaultFactory 默认创建连接工厂
 func DefaultFactory(config *Config) *RedisConn {
 	dst := config.IpAddr + ":" + strconv.Itoa(config.Port)
-	conn := NewRedisConn(config.NetType, dst)
+	conn, err := NewRedisConn(config.NetType, dst)
+	if err != nil {
+		return nil
+	}
 	return conn
 }
 
@@ -50,18 +54,22 @@ func NewConnPool(config *Config, factory func() *RedisConn, initialOpenConns, ma
 	}
 	df := factory == nil
 	// 初始化若干个连接对象
-	for i := 0; i < initialOpenConns; {
+	for i := 0; i < initialOpenConns; i++ {
 		// 使用工厂方法对连接进行创建，如果没有传入，使用默认实现的工厂对象
 		var conn *RedisConn
 		if df {
 			conn = DefaultFactory(config)
+			// 建立连接对象失败
+			if conn == nil {
+				fmt.Println("创建连接对象失败！")
+				break
+			}
 		} else {
 			//TODO 执行自定义的连接创建工厂
 		}
 		// 直到创建完成initialOpenConns个连接对象才停止循环
 		if conn.Auth(config.Password) {
 			pool.Put(conn)
-			i++
 		}
 	}
 	return pool

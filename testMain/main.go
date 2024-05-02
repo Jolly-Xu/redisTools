@@ -39,8 +39,16 @@ func getWithStruct(vt interface{}, arr []byte) {
 }
 
 func main() {
-	//cli := redis.CreateRedisCli(redis.FastConfig("10.32.2.37", 6379, "xujialin"))
-	//println(cli.Get("test"))
+	cli := redis.CreateRedisCli(redis.FastConfig("10.32.2.37", 6379, "xujialin"))
+	println(cli.Get("test"))
+	transaction := cli.CreateTransaction()
+	cli.DoTransaction(transaction, func() (err error) {
+		cli.Set("123", 213, transaction)
+		err = fmt.Errorf("出错了")
+		cli.Get("456", transaction)
+		cli.Set("456", 123, transaction)
+		return
+	})
 	//ip := net.ParseIP("192.168.1.1")
 	//cli.Set("ip2", ip)
 	//cli.Set("userinfo", marshal)
